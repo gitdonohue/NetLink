@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Title>NetLink Client-Server Helper Library</Title>
+    <Description>A helper library to establish client-server links of over different transports (tcp-sockets/named-pipes/web-sockets/...).</Description>
+    <PackageProjectUrl>https://github.com/gitdonohue/NetLink</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/gitdonohue/NetLink</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>network;server;client</PackageTags>
+    <Version>0.0.1.0</Version>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <None Update="README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>

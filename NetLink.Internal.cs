@@ -68,8 +68,8 @@ namespace NetLink
             binaryWriter.Write7BitEncodedInt(Headers.Count);
             foreach (var kv in Headers)
             {
-                binaryWriter.Write(kv.Key);
-                binaryWriter.Write(kv.Value);
+                binaryWriter.WriteUtf8String(kv.Key);
+                binaryWriter.WriteUtf8String(kv.Value);
             }
 
             binaryWriter.Write7BitEncodedInt(Data.Length); 
@@ -91,16 +91,9 @@ namespace NetLink
             int headersCount = binaryReader.Read7BitEncodedInt();
             while (headersCount-->0)
             {
-                try
-                {
-                    string key = binaryReader.ReadString();
-                    string val = binaryReader.ReadString();
-                    netMessage.Headers.Add(key, val);
-                }
-                catch
-                {
-
-                }
+                string key = binaryReader.ReadUtf8String();
+                string val = binaryReader.ReadUtf8String();
+                netMessage.Headers.Add(key, val);
             }
             int dataLen = binaryReader.Read7BitEncodedInt(); 
             if (dataLen > 0) netMessage.Data = binaryReader.ReadBytes(dataLen);

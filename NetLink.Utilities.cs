@@ -66,6 +66,21 @@ namespace NetLink
             return serverAddr;
         }
 
+        internal static string ReadUtf8String(this BinaryReader reader)
+        {
+            int len = reader.Read7BitEncodedInt();
+            byte[] buffer = new byte[len];
+            reader.Read(buffer, 0, len);
+            return System.Text.Encoding.UTF8.GetString(buffer);
+        }
+
+        internal static void WriteUtf8String(this BinaryWriter writer, string s)
+        {
+            byte[] buffer = System.Text.Encoding.UTF8.GetBytes(s);
+            writer.Write7BitEncodedInt(buffer.Length);
+            writer.Write(buffer);
+        }
+
         // Helper method to avoid having to use try finally blocks to lock the semaphore
         public sealed class SemaphoreLock : IDisposable
         {

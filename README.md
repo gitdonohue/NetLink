@@ -1,6 +1,6 @@
 # NetLink
 
-NetLink Client-Server Helper Library
+NetLink Client-Server Helper Library for .Net/C#.
 
 ## Description
 A helper library to establish client-server links of over different transports (tcp-sockets/named-pipes/web-sockets/...).

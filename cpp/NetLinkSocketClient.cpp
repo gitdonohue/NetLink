@@ -1,3 +1,8 @@
+//
+// https://github.com/gitdonohue/NetLink
+// MIT Licence
+//
+
 #include "NetLinkSocketClient.hpp"
 
 #include <string>
@@ -33,7 +38,7 @@ using namespace std;
 //////////////////////////////////////////////////////////////////////////
 
 struct GUID128
-{ 
+{
     uint64_t _low = 0;
     uint64_t _high = 0;
 };
@@ -49,30 +54,26 @@ class NetLinkSocketClientImpl
 {
 private:
     NetLinkSocketClient& m_client;
-    std::string m_serverAddress;
-    int m_serverPort;
     bool m_bIsConnected = false;
     SOCKET m_socket = -1;
 
     GUID128 link_guid;
 
-    volatile bool m_listenThreadShouldStop;
-    std::thread* m_listenThread;
+    volatile bool m_listenThreadShouldStop = false;
+    std::thread* m_listenThread = nullptr;
 
     std::map<GUID128, std::promise<NetLinkMessage>, CompareGUID128> m_pendingMessages;
 
 public:
-    NetLinkSocketClientImpl(const char* server, int port, NetLinkSocketClient& client)
-        : m_serverAddress(server), m_serverPort(port), m_client(client), 
-        m_listenThread(nullptr), m_listenThreadShouldStop(false),
-        m_socket(-1), m_bIsConnected(false)
+    NetLinkSocketClientImpl(NetLinkSocketClient& client)
+        : m_client(client)
     {}
 
     ~NetLinkSocketClientImpl() { Disconnect(); }
 
-    bool Connect();
+    bool Connect(const char* server, int port);
     void Disconnect();
-    bool IsConnected() { return m_bIsConnected; }
+    bool IsConnected() const { return m_bIsConnected; }
     bool SendCommand(const std::string& command);
     bool SendCommand(const NetLinkMessage& command);
     std::future<NetLinkMessage> SendQuery(const NetLinkMessage& msg);
@@ -91,26 +92,27 @@ private:
 //
 //////////////////////////////////////////////////////////////////////////
 
-NetLinkSocketClient::NetLinkSocketClient(const char* server, int port) { m_pImpl = new NetLinkSocketClientImpl(server, port, *this); }
-bool NetLinkSocketClient::Connect() { return ((NetLinkSocketClientImpl*)m_pImpl)->Connect(); }
+NetLinkSocketClient::NetLinkSocketClient() { m_pImpl = new NetLinkSocketClientImpl(*this); }
+NetLinkSocketClient::~NetLinkSocketClient() { if (m_pImpl) { delete (NetLinkSocketClientImpl*)m_pImpl; m_pImpl = nullptr; } }
+bool NetLinkSocketClient::Connect(const char* server, int port) { return ((NetLinkSocketClientImpl*)m_pImpl)->Connect(server, port); }
 bool NetLinkSocketClient::SendCommand(const char* command) { return ((NetLinkSocketClientImpl*)m_pImpl)->SendCommand(command); }
 bool NetLinkSocketClient::SendCommand(const NetLinkMessage& command) { return ((NetLinkSocketClientImpl*)m_pImpl)->SendCommand(command); }
 void NetLinkSocketClient::Disconnect() { ((NetLinkSocketClientImpl*)m_pImpl)->Disconnect(); }
-bool NetLinkSocketClient::IsConnected() { return ((NetLinkSocketClientImpl*)m_pImpl)->IsConnected(); }
+bool NetLinkSocketClient::IsConnected() const { return ((NetLinkSocketClientImpl*)m_pImpl)->IsConnected(); }
 std::future<NetLinkMessage> NetLinkSocketClient::SendQuery(const NetLinkMessage& msg) { return ((NetLinkSocketClientImpl*)m_pImpl)->SendQuery(msg); }
 
 //////////////////////////////////////////////////////////////////////////
 //
-// Internal Foreward declarations for utilities
+// Internal Forward declarations for utilities
 //
 //////////////////////////////////////////////////////////////////////////
 
-void WriteByte(std::vector<std::byte>& buffer, std::byte val);
-std::byte ReadByte(std::istream& istream);
-void Write7BitEncodedInt(std::vector<std::byte>& buffer, int val);
-int Read7BitEncodedInt(std::istream& istream);
-void InsertDotNetString(std::vector<std::byte>& buffer, const std::string& val);
-std::string ReadDotnetUtf8String(std::istream& istream);
+void WriteByte(std::vector<std::byte>&, std::byte);
+std::byte ReadByte(std::istream&);
+void Write7BitEncodedInt(std::vector<std::byte>&, int);
+int Read7BitEncodedInt(std::istream&);
+void InsertDotNetString(std::vector<std::byte>&, const std::string&);
+std::string ReadDotnetUtf8String(std::istream&);
 GUID128 GenerateUUID();
 
 //////////////////////////////////////////////////////////////////////////
@@ -119,7 +121,7 @@ GUID128 GenerateUUID();
 //
 //////////////////////////////////////////////////////////////////////////
 
-bool NetLinkSocketClientImpl::Connect()
+bool NetLinkSocketClientImpl::Connect(const char* server, int port)
 {
     Disconnect();
 
@@ -133,12 +135,12 @@ bool NetLinkSocketClientImpl::Connect()
     hints.ai_socktype = SOCK_STREAM;
 
     struct addrinfo* _addressInfo = nullptr;
-    if (getaddrinfo(m_serverAddress.c_str(), std::to_string(m_serverPort).c_str(), &hints, &_addressInfo) != 0) return false;
+    if (getaddrinfo(server, std::to_string(port).c_str(), &hints, &_addressInfo) != 0) return false;
 
     m_socket = socket(_addressInfo->ai_family, _addressInfo->ai_socktype, _addressInfo->ai_protocol);
     if (m_socket == -1) return false;
 
-    if (connect(m_socket, _addressInfo->ai_addr, (int)_addressInfo->ai_addrlen)) 
+    if (connect(m_socket, _addressInfo->ai_addr, static_cast<int>(_addressInfo->ai_addrlen)))
     {
 #if VERBOSE
         std::cerr << "Not Connected\n";
@@ -184,7 +186,7 @@ bool NetLinkSocketClientImpl::Send(void* buffer, int len)
 {
     if (!m_bIsConnected) return false;
     if (!buffer || len == 0) return false;
-    int send_len = send(m_socket, (char*)buffer, len, 0);
+    const int send_len = send(m_socket, static_cast<char*>(buffer), len, 0);
     return send_len == len;
 }
 
@@ -192,9 +194,9 @@ bool NetLinkSocketClientImpl::Receive(void* buffer, int len)
 {
     if (!m_bIsConnected) return false;
     if (!buffer || len == 0) return false;
-    int totalLen = len;
+    const int totalLen = len;
     int totalRecv = 0;
-    char* recvPtr = (char*)buffer;
+    char* recvPtr = static_cast<char*>(buffer);
     while (len > 0)
     {
         int n = recv(m_socket, recvPtr, len, 0);
@@ -206,13 +208,13 @@ bool NetLinkSocketClientImpl::Receive(void* buffer, int len)
 }
 
 // Stream from memory buffer
-class membuf : public std::basic_streambuf<char> 
+class membuf : public std::basic_streambuf<char>
 {
 public:
     membuf(const std::byte* p, size_t l) { setg((char*)p, (char*)p, (char*)p + l); }
 };
 
-class memstream : public std::istream 
+class memstream : public std::istream
 {
 public:
     memstream(const std::byte* p, size_t l) : std::istream(&_buffer), _buffer(p, l) { rdbuf(&_buffer); }
@@ -237,6 +239,7 @@ void NetLinkSocketClientImpl::StartListening()
                     memstream receiveBufferStream(receiveBuffer.data(), receiveSize);
                     HandlePacket(receiveBufferStream);
                 }
+                m_client.DisconnectHandler();
             });
     }
 }
@@ -247,7 +250,7 @@ void NetLinkSocketClientImpl::HandlePacket(istream& packetstream)
 
     std::byte flags = ReadByte(packetstream);
 
-    int numHeaders = Read7BitEncodedInt(packetstream);
+    const int numHeaders = Read7BitEncodedInt(packetstream);
     for (int i = 0; i < numHeaders; ++i)
     {
         std::string k = ReadDotnetUtf8String(packetstream);
@@ -255,18 +258,18 @@ void NetLinkSocketClientImpl::HandlePacket(istream& packetstream)
         m.headers.emplace(k, v);
     }
 
-    int dataSize = Read7BitEncodedInt(packetstream);
+    const int dataSize = Read7BitEncodedInt(packetstream);
     m.data.resize(dataSize);
-    packetstream.read((char*)m.data.data(), m.data.size());
+    packetstream.read(reinterpret_cast<char*>(m.data.data()), m.data.size());
 
     GUID128 guid;
-    packetstream.read((char*)&guid, 16);
+    packetstream.read(reinterpret_cast<char*>(&guid), 16);
 
-    bool isQuery = guid._low != 0 || guid._high != 0;
+    const bool isQuery = guid._low != 0 || guid._high != 0;
 
-    bool isQueryResponse = ReadByte(packetstream) != std::byte(0);
-    bool isValid = ReadByte(packetstream) != std::byte(0);
-    
+    const bool isQueryResponse = ReadByte(packetstream) != std::byte(0);
+    const bool isValid = ReadByte(packetstream) != std::byte(0);
+
     if (isQueryResponse)
     {
         m.isSuccessful = isValid;
@@ -281,8 +284,7 @@ void NetLinkSocketClientImpl::HandlePacket(istream& packetstream)
     }
     else if (isQuery)
     {
-        NetLinkMessage response = m_client.QueryHandler(m);
-        //memcpy(response.guid, &guid, 16);
+        const NetLinkMessage response = m_client.QueryHandler(m);
         InternalSendMessage(response, true, &guid);
     }
     else // Command
@@ -311,11 +313,11 @@ bool NetLinkSocketClientImpl::InternalSendMessage(const NetLinkMessage& message,
     std::vector<std::byte> messageBuffer;
     messageBuffer.reserve(1024);
 
-    messageBuffer.resize((size_t)4); // Size will be set at the end
+    messageBuffer.resize(static_cast<size_t>(4)); // Size will be set at the end
 
-    WriteByte(messageBuffer, std::byte(0)); // No flags
+    WriteByte(messageBuffer, static_cast<std::byte>(0)); // No flags
 
-    int numHeaders = (int)message.headers.size();
+    const int numHeaders = static_cast<int>(message.headers.size());
     Write7BitEncodedInt(messageBuffer, numHeaders);
     for (auto& item : message.headers)
     {
@@ -323,7 +325,7 @@ bool NetLinkSocketClientImpl::InternalSendMessage(const NetLinkMessage& message,
         InsertDotNetString(messageBuffer, item.second);
     }
 
-    Write7BitEncodedInt(messageBuffer, (int)message.data.size());
+    Write7BitEncodedInt(messageBuffer, static_cast<int>(message.data.size()));
     messageBuffer.insert(messageBuffer.end(), (std::byte*)message.data.data(), (std::byte*)message.data.data() + message.data.size());
 
     if (guid != nullptr)
@@ -335,14 +337,14 @@ bool NetLinkSocketClientImpl::InternalSendMessage(const NetLinkMessage& message,
         messageBuffer.insert(messageBuffer.end(), 16, std::byte(0));
     }
 
-    WriteByte(messageBuffer, (std::byte)isQueryResponse);
-    WriteByte(messageBuffer, (std::byte)message.isSuccessful);
+    WriteByte(messageBuffer, static_cast<std::byte>(isQueryResponse));
+    WriteByte(messageBuffer, static_cast<std::byte>(message.isSuccessful));
 
     // Send message to server
-    int len = (int)messageBuffer.size() - 4;
+    const int len = static_cast<int>(messageBuffer.size()) - 4;
     memcpy(messageBuffer.data(), &len, 4);
-    
-    Send(messageBuffer.data(), (int)messageBuffer.size());
+
+    Send(messageBuffer.data(), static_cast<int>(messageBuffer.size()));
 
     return true;
 }
@@ -365,38 +367,38 @@ std::future<NetLinkMessage> NetLinkSocketClientImpl::SendQuery(const NetLinkMess
 //
 //////////////////////////////////////////////////////////////////////////
 
-static void WriteByte(std::vector<std::byte>& buffer, std::byte val)
+void WriteByte(std::vector<std::byte>& buffer, std::byte val)
 {
     buffer.push_back(val);
 }
 
-static std::byte ReadByte(std::istream& istream)
+std::byte ReadByte(std::istream& istream)
 {
     std::byte b;
-    istream.read((char*)&b, 1);
+    istream.read(reinterpret_cast<char*>(&b), 1);
     return b;
 }
 
-static void Write7BitEncodedInt(std::vector<std::byte>& buffer, int val)
+void Write7BitEncodedInt(std::vector<std::byte>& buffer, int val)
 {
     uint8_t indx = 0;
     char c;
-    while (1)
+    while (true)
     {
         c = val & 0x7F;
         if (val > 0x7F) { c |= 0x80; }
-        buffer.push_back((std::byte)c);
+        buffer.push_back(static_cast<std::byte>(c));
         if (val <= 0x7F) break;
         val >>= 7;
     }
 }
 
-static int Read7BitEncodedInt(std::istream& istream)
+int Read7BitEncodedInt(std::istream& istream)
 {
     int v = 0;
     uint8_t indx = 0;
     char c;
-    while (1)
+    while (true)
     {
         istream.read(&c, 1);
         v |= (c & 0x7F) << indx;
@@ -406,19 +408,19 @@ static int Read7BitEncodedInt(std::istream& istream)
     return v;
 }
 
-static void InsertDotNetString(std::vector<std::byte>& buffer, const std::string& val)
+void InsertDotNetString(std::vector<std::byte>& buffer, const std::string& val)
 {
-    int len = (int)val.length(); // tmp - not utf8 proper
+    const int len = static_cast<int>(val.length()); // tmp - not utf8 proper
     std::byte* utf8data = (std::byte*)val.c_str(); // tmp - not utf8 proper
 
     Write7BitEncodedInt(buffer, len);
     buffer.insert(buffer.end(), utf8data, utf8data + len);
 }
 
-static std::string ReadDotnetUtf8String(std::istream& istream)
+std::string ReadDotnetUtf8String(std::istream& istream)
 {
-    int sz = Read7BitEncodedInt(istream);
-    std::vector<char> buffer(sz+1);
+    const int sz = Read7BitEncodedInt(istream);
+    std::vector<char> buffer(sz + 1);
     istream.read((char*)buffer.data(), sz);
     buffer[sz] = 0;
 
@@ -427,7 +429,7 @@ static std::string ReadDotnetUtf8String(std::istream& istream)
     return str;
 }
 
-static GUID128 GenerateUUID()
+GUID128 GenerateUUID()
 {
     GUID128 guid;
     std::random_device rd;

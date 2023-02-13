@@ -1,3 +1,8 @@
+//
+// https://github.com/gitdonohue/NetLink
+// MIT Licence
+//
+
 #pragma once
 
 #include <cstddef>
@@ -19,14 +24,16 @@ struct NetLinkMessage
 class NetLinkSocketClient
 {
 public:
-	NetLinkSocketClient(const char* server, int port);
-	bool Connect();
+	NetLinkSocketClient();
+	~NetLinkSocketClient();
+	bool Connect(const char* server, int port);
 	void Disconnect();
-	bool IsConnected();
+	bool IsConnected() const;
 	bool SendCommand(const char* command);
 	bool SendCommand(const NetLinkMessage& command);
 	std::future<NetLinkMessage> SendQuery(const NetLinkMessage& msg);
 
+	std::function<void()> DisconnectHandler; // Note: will be called from another thread
 	std::function<void(const NetLinkMessage&)> CommandHandler; // Note: will be called from another thread
 	std::function<NetLinkMessage(const NetLinkMessage&)> QueryHandler; // Note: will be called from another thread
 

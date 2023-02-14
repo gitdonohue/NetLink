@@ -59,6 +59,9 @@ private:
 
     GUID128 link_guid;
 
+    volatile bool m_connectThreadShouldStop = false;
+    std::thread* m_connectThread = nullptr;
+
     volatile bool m_listenThreadShouldStop = false;
     std::thread* m_listenThread = nullptr;
 
@@ -66,12 +69,13 @@ private:
 
 public:
     NetLinkSocketClientImpl(NetLinkSocketClient& client)
-        : m_client(client)
+        : m_client(client), m_socket(-1), m_listenThread(nullptr), m_connectThread(nullptr)
     {}
 
     ~NetLinkSocketClientImpl() { Disconnect(); }
 
     bool Connect(const char* server, int port);
+    void StartConnect(const char* server, int port, int reconnectDelyayMs);
     void Disconnect();
     bool IsConnected() const { return m_bIsConnected; }
     bool SendCommand(const std::string& command);
@@ -80,6 +84,9 @@ public:
 
 private:
     void StartListening();
+    void StopListening();
+    void StopConnect();
+    void CloseSocket();
     bool InternalSendMessage(const NetLinkMessage& command, bool isQueryResponse, GUID128* guid);
     void HandlePacket(istream& packetstream);
     bool Send(void* buffer, int len);
@@ -95,6 +102,7 @@ private:
 NetLinkSocketClient::NetLinkSocketClient() { m_pImpl = new NetLinkSocketClientImpl(*this); }
 NetLinkSocketClient::~NetLinkSocketClient() { if (m_pImpl) { delete (NetLinkSocketClientImpl*)m_pImpl; m_pImpl = nullptr; } }
 bool NetLinkSocketClient::Connect(const char* server, int port) { return ((NetLinkSocketClientImpl*)m_pImpl)->Connect(server, port); }
+void NetLinkSocketClient::StartConnect(const char* server, int port, int reconnectDelyayMs) { ((NetLinkSocketClientImpl*)m_pImpl)->StartConnect(server, port, reconnectDelyayMs); }
 bool NetLinkSocketClient::SendCommand(const char* command) { return ((NetLinkSocketClientImpl*)m_pImpl)->SendCommand(command); }
 bool NetLinkSocketClient::SendCommand(const NetLinkMessage& command) { return ((NetLinkSocketClientImpl*)m_pImpl)->SendCommand(command); }
 void NetLinkSocketClient::Disconnect() { ((NetLinkSocketClientImpl*)m_pImpl)->Disconnect(); }
@@ -123,7 +131,7 @@ GUID128 GenerateUUID();
 
 bool NetLinkSocketClientImpl::Connect(const char* server, int port)
 {
-    Disconnect();
+    CloseSocket();
 
 #ifdef _WIN32
     WSADATA wsaData;
@@ -145,7 +153,7 @@ bool NetLinkSocketClientImpl::Connect(const char* server, int port)
 #if VERBOSE
         std::cerr << "Not Connected\n";
 #endif
-        Disconnect();
+        CloseSocket();
         return false;
     }
 
@@ -158,10 +166,49 @@ bool NetLinkSocketClientImpl::Connect(const char* server, int port)
 
     StartListening();
 
+    if (m_client.ConnectHandler) m_client.ConnectHandler();
+
     return true;
 }
 
-void NetLinkSocketClientImpl::Disconnect()
+void NetLinkSocketClientImpl::StartConnect(const char* server, int port, int reconnectDelyayMs)
+{
+    StopConnect();
+    if (!m_connectThread)
+    {
+        m_connectThreadShouldStop = false;
+        std::string serverName(server);
+        m_connectThread = new std::thread([this, serverName, port, reconnectDelyayMs]()
+        {
+            while (!m_connectThreadShouldStop)
+            {
+                if (IsConnected())
+                {
+                    if (m_client.SleepMs) m_client.SleepMs(200);
+                }
+                else
+                {
+                    if (!Connect(serverName.c_str(), port))
+                    {
+                        if (m_client.SleepMs) m_client.SleepMs(reconnectDelyayMs);
+                    }
+                }
+            }
+        });
+    }
+}
+
+void NetLinkSocketClientImpl::StopConnect()
+{
+    m_connectThreadShouldStop = true;
+    if (m_connectThread)
+    {
+        m_connectThread->join();
+        m_connectThread = nullptr;
+    }
+}
+
+void NetLinkSocketClientImpl::CloseSocket()
 {
     if (m_socket != -1)
     {
@@ -173,13 +220,14 @@ void NetLinkSocketClientImpl::Disconnect()
         m_socket = -1;
     }
     m_bIsConnected = false;
+}
 
-    m_listenThreadShouldStop = true;
-    if (m_listenThread)
-    {
-        m_listenThread->join();
-        m_listenThread = nullptr;
-    }
+void NetLinkSocketClientImpl::Disconnect()
+{
+    m_bIsConnected = false;
+    StopConnect();
+    StopListening();
+    CloseSocket();
 }
 
 bool NetLinkSocketClientImpl::Send(void* buffer, int len)
@@ -224,23 +272,36 @@ private:
 
 void NetLinkSocketClientImpl::StartListening()
 {
+    StopListening();
+    m_listenThreadShouldStop = false;
     if (!m_listenThread)
     {
-        m_listenThreadShouldStop = false;
-        m_listenThread = new std::thread([&]()
+        m_listenThread = new std::thread([this]()
+        {
+            while (!m_listenThreadShouldStop)
             {
-                while (!m_listenThreadShouldStop)
-                {
-                    int receiveSize;
-                    if (!Receive(&receiveSize, 4)) break;
+                int receiveSize;
+                if (!Receive(&receiveSize, 4)) break;
 
-                    std::vector<std::byte> receiveBuffer(receiveSize);
-                    if (!Receive(receiveBuffer.data(), receiveSize)) break;
-                    memstream receiveBufferStream(receiveBuffer.data(), receiveSize);
-                    HandlePacket(receiveBufferStream);
-                }
-                m_client.DisconnectHandler();
-            });
+                std::vector<std::byte> receiveBuffer(receiveSize);
+                if (!Receive(receiveBuffer.data(), receiveSize)) break;
+                memstream receiveBufferStream(receiveBuffer.data(), receiveSize);
+                HandlePacket(receiveBufferStream);
+            }
+
+            this->m_bIsConnected = false;
+            if (m_client.DisconnectHandler) m_client.DisconnectHandler();
+        });
+    }
+}
+
+void NetLinkSocketClientImpl::StopListening()
+{
+    m_listenThreadShouldStop = true;
+    if (m_listenThread)
+    {
+        m_listenThread->join();
+        m_listenThread = nullptr;
     }
 }
 
@@ -284,12 +345,21 @@ void NetLinkSocketClientImpl::HandlePacket(istream& packetstream)
     }
     else if (isQuery)
     {
-        const NetLinkMessage response = m_client.QueryHandler(m);
-        InternalSendMessage(response, true, &guid);
+        if (m_client.QueryHandler)
+        {
+            const NetLinkMessage response = m_client.QueryHandler(m);
+            InternalSendMessage(response, true, &guid);
+        }
+        else
+        {
+            NetLinkMessage response;
+            response.headers["error"] = "No query handler is set.";
+            InternalSendMessage(response, false, &guid);
+        }
     }
     else // Command
     {
-        m_client.CommandHandler(m);
+        if (m_client.CommandHandler) m_client.CommandHandler(m);
     }
 
 }
@@ -344,7 +414,13 @@ bool NetLinkSocketClientImpl::InternalSendMessage(const NetLinkMessage& message,
     const int len = static_cast<int>(messageBuffer.size()) - 4;
     memcpy(messageBuffer.data(), &len, 4);
 
-    Send(messageBuffer.data(), static_cast<int>(messageBuffer.size()));
+    if (!Send(messageBuffer.data(), static_cast<int>(messageBuffer.size())))
+    {
+        m_bIsConnected = false;
+        StopListening();
+        CloseSocket();
+        return false;
+    }
 
     return true;
 }

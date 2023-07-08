@@ -14,7 +14,9 @@ namespace NetLink
         public bool IsEncrypted => PublicKeyRsa != null;
         public bool IsVerified => false; // TODO
 
-        public event EventHandler? OnConnected;
+		IReadOnlyDictionary<string, string> INetLink.Properties => Properties;
+
+		public event EventHandler? OnConnected;
         public event EventHandler? OnDisconnected;
 
         private string ServerName { get; init; } = "localHost";
@@ -51,8 +53,9 @@ namespace NetLink
             NetworkStream = null;
         }
 
-        public async Task ConnectAndProcess(CancellationToken ct)
+		public async Task ConnectAndProcess(CancellationToken ct)
         {
+            ResetAtConnection();
 
             //Trace($"connecting to {ServerName}:{ServerPort}...");
             try
@@ -345,9 +348,11 @@ namespace NetLink
                 var linkListenTask = async () =>
                 {
                     try
-                    {                            
-                        var link = new NetLinkSocket(clientStream, link_guid) { AllowCompression = this.AllowOutgoingCompression, AllowEncryption = this.AllowEncryption };
-                        ActiveLinks.Add(link);
+                    {
+						NetLinkSocket link = new NetLinkSocket(clientStream, link_guid) { AllowCompression = this.AllowOutgoingCompression, AllowEncryption = this.AllowEncryption };
+                        string remote = client.Client.RemoteEndPoint?.ToString() ?? string.Empty;
+                        link.SetProperty("remote", remote);
+						ActiveLinks.Add(link);
 
                         await link.InternalOnLinkEstablished(ct);
 

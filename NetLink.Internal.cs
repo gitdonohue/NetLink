@@ -274,7 +274,10 @@ namespace NetLink
 
     public abstract class NetLinkSharedBase
     {
-        public Func<INetLink, NetMessage, CancellationToken, Task>? CommandHandler { private get; set; }
+		protected Dictionary<string, string> Properties = new();
+        public void SetProperty(string key, string val) { Properties[key] = val; }
+
+		public Func<INetLink, NetMessage, CancellationToken, Task>? CommandHandler { private get; set; }
         public Func<INetLink, NetMessage, CancellationToken, Task<NetMessage>>? QueryHandler { private get; set; }
 
         protected Dictionary<Guid, SemaphoreSlim> PendingRequests = new();

@@ -35,6 +35,7 @@
     {
         Guid Id { get; }
         bool IsConnected { get; }
+        IReadOnlyDictionary<string, string> Properties { get; }
 
         event EventHandler? OnConnected;
         event EventHandler? OnDisconnected;

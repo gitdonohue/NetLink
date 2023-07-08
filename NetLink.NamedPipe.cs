@@ -17,7 +17,9 @@ namespace NetLink
         public bool IsEncrypted => PublicKeyRsa != null;
         public bool IsVerified => false; // TODO
 
-        public event EventHandler? OnConnected;
+		IReadOnlyDictionary<string, string> INetLink.Properties => Properties;
+
+		public event EventHandler? OnConnected;
         public event EventHandler? OnDisconnected;
 
         private string ServerName { get; init; } = ".";
@@ -53,8 +55,8 @@ namespace NetLink
 
         public async Task ConnectAndProcess(CancellationToken ct)
         {
-
-            Trace($"connecting to {ServerPipeName}...");
+			ResetAtConnection();
+			Trace($"connecting to {ServerPipeName}...");
             try
             {
                 var guid_buffer = new byte[16];

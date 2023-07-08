@@ -26,7 +26,9 @@ namespace NetLink
         public enum EncodingType { Binary, Text };
         internal EncodingType Encoding { get; init; } = EncodingType.Binary;
 
-        internal NetLinkWebsocket(WebSocket ws, Guid id, EncodingType encoding)
+		IReadOnlyDictionary<string, string> INetLink.Properties => Properties;
+
+		internal NetLinkWebsocket(WebSocket ws, Guid id, EncodingType encoding)
         {
             websocket = ws;
             LinkGuid = id;

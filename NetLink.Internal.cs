@@ -331,15 +331,22 @@ public abstract class NetLinkSharedBase
         if (AllowEncryption && !IsClient)
         {
             // Note: We are assuming that only the server initiates Encryption requests
-            var serverCertificate = Utilities.GetCertificate(INetLinkServer.ServerCertificateName);
-            if (Utilities.Verbose)
+            try
             {
-                if (serverCertificate != null) { Trace($"Server sending certificate: {serverCertificate.Issuer}"); }
-                else { Trace("Server does not have a certificate."); }
+                var serverCertificate = Utilities.GetCertificate(INetLinkServer.ServerCertificateName);
+                if (Utilities.Verbose)
+                {
+                    if (serverCertificate != null) { Trace($"Server sending certificate: {serverCertificate.Issuer}"); }
+                    else { Trace("Server does not have a certificate."); }
+                }
+                if (serverCertificate != null)
+                {
+                    await SendStartEncryption(serverCertificate, null, null, ct);
+                }
             }
-            if (serverCertificate != null)
+            catch (Exception e)
             {
-                await SendStartEncryption(serverCertificate, null, null, ct);
+                Trace($"Could not get certificate named {INetLinkServer.ServerCertificateName}: {e.Message}");
             }
         }
     }

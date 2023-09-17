@@ -47,13 +47,15 @@ public sealed class NetLinkSocket : NetLinkSharedBase, INetLink
         NetworkStream = null;
     }
 
+    public override string ToString() => Id.ToString();
+
     private void CloseStream()
     {
         NetworkStream?.Close();
         NetworkStream = null;
     }
 
-		public async Task ConnectAndProcess(CancellationToken ct)
+	public async Task ConnectAndProcess(CancellationToken ct)
     {
         ResetAtConnection();
 
@@ -71,22 +73,20 @@ public sealed class NetLinkSocket : NetLinkSharedBase, INetLink
             {
                 CancellationTokenSource tcts = new();
                 tcts.CancelAfter(2000);
-                using (CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(tcts.Token, ct))
+                using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(tcts.Token, ct);
+                try
                 {
-                    try
-                    {
-                        await clientSocket.ConnectAsync(endPoint, linkedCts.Token);
-                        break;
-                    }
-                    catch (TaskCanceledException e)
-                    {
-                         if (ct.IsCancellationRequested) throw e;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        // Try again...
-                        clientSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                    }
+                    await clientSocket.ConnectAsync(endPoint, linkedCts.Token);
+                    break;
+                }
+                catch (TaskCanceledException e)
+                {
+                    if (ct.IsCancellationRequested) throw e;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Try again...
+                    clientSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 }
             }
 

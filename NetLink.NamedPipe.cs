@@ -41,7 +41,7 @@ public sealed class NetLinkNamedPipe : NetLinkSharedBase, INetLink
 
 
 
-    private readonly CancellationTokenSource streamDisconnectedTokenSource = new CancellationTokenSource();
+    private readonly CancellationTokenSource streamDisconnectedTokenSource = new();
 
     internal NetLinkNamedPipe(PipeStream inStream, PipeStream outStream, Guid id)
     {
@@ -55,84 +55,82 @@ public sealed class NetLinkNamedPipe : NetLinkSharedBase, INetLink
 
     }
 
+    public override string ToString() => Id.ToString();
+
     public async Task ConnectAndProcess(CancellationToken ct)
     {
-			ResetAtConnection();
-			Trace($"connecting to {ServerPipeName}...");
+		ResetAtConnection();
+		Trace($"connecting to {ServerPipeName}...");
         try
         {
             var guid_buffer = new byte[16];
 
-            using (NamedPipeClientStream primaryPipeClient = new NamedPipeClientStream(ServerName, ServerPipeName, PipeDirection.In))
+            using NamedPipeClientStream primaryPipeClient = new NamedPipeClientStream(ServerName, ServerPipeName, PipeDirection.In);
+            // Connect to the pipe or wait until the pipe is available.
+            Trace($"Client Attempting to connect to primary pipe {ServerPipeName}...");
+            while (!ct.IsCancellationRequested)
             {
-                // Connect to the pipe or wait until the pipe is available.
-                Trace($"Client Attempting to connect to primary pipe {ServerPipeName}...");
-                while (!ct.IsCancellationRequested)
+                try
                 {
-                    try
-                    {
-                        //await primaryPipeClient.ConnectAsync(ct);
-                        await primaryPipeClient.ConnectAsync(1000, ct);
-                        break;
-                    }
-                    catch (TimeoutException)
-                    {
-                        continue;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        return;
-                    }
+                    //await primaryPipeClient.ConnectAsync(ct);
+                    await primaryPipeClient.ConnectAsync(1000, ct);
+                    break;
                 }
-
-                Trace("Client Connected to primary pipe.");
-
-                int c = await primaryPipeClient.ReadAsync(guid_buffer, ct);
-                if (c != 16)
+                catch (TimeoutException)
                 {
-                    throw new InvalidDataException("The pipe did not send a valid guid");
+                    continue;
                 }
-
-                primaryPipeClient.Close();
-
-                var linkGuid = new Guid(guid_buffer);
-                LinkGuid = linkGuid;
-                string linkPipeName = $"{ServerPipeName}:{linkGuid}";
-
-                using (NamedPipeClientStream linkPipeClientIn = new NamedPipeClientStream(ServerName, linkPipeName + ":MOSI", PipeDirection.In))
-                using (NamedPipeClientStream linkPipeClientOut = new NamedPipeClientStream(ServerName, linkPipeName + ":MISO", PipeDirection.Out))
+                catch (OperationCanceledException)
                 {
-                    try
-                    {
-                        Trace($"Client Attempting to connect to link pipe {linkPipeName + ":MOSI"}...");
-                        await linkPipeClientIn.ConnectAsync(ct);
-                        Trace($"Client Attempting to connect to link pipe {linkPipeName + ":MISO"}...");
-                        await linkPipeClientOut.ConnectAsync(ct);
-                    }
-                    catch (UnauthorizedAccessException)
-                    {
-                        return;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        return;
-                    }
-                    Trace("Client Connected to link pipe.");
-                    //IsConnected = true;
-                    //OnConnected?.Invoke(this, EventArgs.Empty);
-                    _ = Task.Run(() => OnConnected?.Invoke(this, EventArgs.Empty));
-
-                    StreamIn = linkPipeClientIn;
-                    StreamOut = linkPipeClientOut;
-
-                    await Listen(ct);
-
-                    Trace("disconnected.");
-                    //IsConnected = false;
-                    //OnDisconnected?.Invoke(this, EventArgs.Empty);
-                    _ = Task.Run(() => OnDisconnected?.Invoke(this, EventArgs.Empty));
+                    return;
                 }
             }
+
+            Trace("Client Connected to primary pipe.");
+
+            int c = await primaryPipeClient.ReadAsync(guid_buffer, ct);
+            if (c != 16)
+            {
+                throw new InvalidDataException("The pipe did not send a valid guid");
+            }
+
+            primaryPipeClient.Close();
+
+            var linkGuid = new Guid(guid_buffer);
+            LinkGuid = linkGuid;
+            string linkPipeName = $"{ServerPipeName}:{linkGuid}";
+
+            using NamedPipeClientStream linkPipeClientIn = new NamedPipeClientStream(ServerName, linkPipeName + ":MOSI", PipeDirection.In);
+            using NamedPipeClientStream linkPipeClientOut = new NamedPipeClientStream(ServerName, linkPipeName + ":MISO", PipeDirection.Out);
+            try
+            {
+                Trace($"Client Attempting to connect to link pipe {linkPipeName + ":MOSI"}...");
+                await linkPipeClientIn.ConnectAsync(ct);
+                Trace($"Client Attempting to connect to link pipe {linkPipeName + ":MISO"}...");
+                await linkPipeClientOut.ConnectAsync(ct);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            Trace("Client Connected to link pipe.");
+            //IsConnected = true;
+            //OnConnected?.Invoke(this, EventArgs.Empty);
+            _ = Task.Run(() => OnConnected?.Invoke(this, EventArgs.Empty));
+
+            StreamIn = linkPipeClientIn;
+            StreamOut = linkPipeClientOut;
+
+            await Listen(ct);
+
+            Trace("disconnected.");
+            //IsConnected = false;
+            //OnDisconnected?.Invoke(this, EventArgs.Empty);
+            _ = Task.Run(() => OnDisconnected?.Invoke(this, EventArgs.Empty));
         }
         catch (TaskCanceledException)
         {
@@ -180,7 +178,7 @@ public sealed class NetLinkNamedPipe : NetLinkSharedBase, INetLink
         Trace($"{Role} Read task stopped.");
     }
 
-    SemaphoreSlim writeLock = new(1);
+    readonly SemaphoreSlim writeLock = new(1);
 
     private async Task WritePacket(Stream outputStream, ArraySegment<byte> data, CancellationToken ct)
     {

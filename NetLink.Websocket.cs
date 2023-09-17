@@ -28,9 +28,9 @@ public sealed class NetLinkWebsocket : NetLinkSharedBase, INetLink
     public enum EncodingType { Binary, Text };
     internal EncodingType Encoding { get; init; } = EncodingType.Binary;
 
-		IReadOnlyDictionary<string, string> INetLink.Properties => Properties;
+	IReadOnlyDictionary<string, string> INetLink.Properties => Properties;
 
-		internal NetLinkWebsocket(WebSocket ws, Guid id, EncodingType encoding)
+	internal NetLinkWebsocket(WebSocket ws, Guid id, EncodingType encoding)
     {
         websocket = ws;
         LinkGuid = id;
@@ -45,6 +45,8 @@ public sealed class NetLinkWebsocket : NetLinkSharedBase, INetLink
         ServerPort = port;
         Encoding = encoding;
     }
+
+    public override string ToString() => Id.ToString();
 
     public async Task ConnectAndProcess(CancellationToken ct)
     {

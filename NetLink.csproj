@@ -18,6 +18,12 @@
 
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="Examples\**" />
+    <EmbeddedResource Remove="Examples\**" />
+    <None Remove="Examples\**" />
+  </ItemGroup>
+
 
   <ItemGroup>
     <None Update="README.md">

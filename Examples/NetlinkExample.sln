@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.7.34018.315
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetlinkExample", "NetlinkExample.csproj", "{AF629082-6AFD-4F1A-B169-2DB7861000BB}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NetLink", "..\NetLink.csproj", "{66AF6736-09B9-472C-A0FD-6D52C29555C6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AF629082-6AFD-4F1A-B169-2DB7861000BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF629082-6AFD-4F1A-B169-2DB7861000BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF629082-6AFD-4F1A-B169-2DB7861000BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF629082-6AFD-4F1A-B169-2DB7861000BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{66AF6736-09B9-472C-A0FD-6D52C29555C6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{66AF6736-09B9-472C-A0FD-6D52C29555C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{66AF6736-09B9-472C-A0FD-6D52C29555C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{66AF6736-09B9-472C-A0FD-6D52C29555C6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4AA0910C-DA96-4A6D-9D6E-F1D79AEA4265}
+	EndGlobalSection
+EndGlobal

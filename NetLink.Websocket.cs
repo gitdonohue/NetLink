@@ -289,7 +289,7 @@ public sealed class NetLinkWebsocketServer : INetLinkServer
 
     private HttpListener? httpListener;
     private HashSet<INetLink> ActiveLinks { get; set; } = new();
-    public IEnumerable<INetLink> GetLinks() => ActiveLinks;
+    public IEnumerable<INetLink> GetLinks() => ActiveLinks.ToList(); // Copy so that new links can be created while iterating;
 
     private bool Verbose => INetLink.Verbose;
 

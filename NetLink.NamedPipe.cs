@@ -312,7 +312,7 @@ public sealed class NetLinkNamedPipeServer : INetLinkServer
     }
 
     private HashSet<INetLink> ActiveLinks { get; set; } = new();
-    public IEnumerable<INetLink> GetLinks() => ActiveLinks;
+    public IEnumerable<INetLink> GetLinks() => ActiveLinks.ToList(); // Copy so that new links can be created while iterating
 
     private NamedPipeServerStream CreatePipeServerStream(string pipeName, PipeDirection direction, 
         int maxNumberOfServerInstances = NamedPipeServerStream.MaxAllowedServerInstances, 

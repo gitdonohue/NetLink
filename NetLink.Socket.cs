@@ -306,7 +306,7 @@ public sealed class NetLinkSocketServer : INetLinkServer
     }
 
     private HashSet<INetLink> ActiveLinks { get; set; } = new();
-    public IEnumerable<INetLink> GetLinks() => ActiveLinks;
+    public IEnumerable<INetLink> GetLinks() => ActiveLinks.ToList(); // Copy so that new links can be created while iterating
 
     public async Task Run(CancellationToken ct)
     {

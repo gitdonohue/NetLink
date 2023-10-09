@@ -39,26 +39,22 @@ public sealed partial class NetMessage
         return System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(dict));
     }
 
+    internal record TextPayload(Dictionary<string,string> Headers, string Data, string QueryId, bool IsQueryResponse);
+
     internal static NetMessage DeSerializeText(ArraySegment<byte> data, INetLink link)
     {
         var msg = new NetMessage(link);
 
-        string txt = System.Text.Encoding.UTF8.GetString(data);
+        string txt = System.Text.Encoding.UTF8.GetString(data) ?? string.Empty;
 
-        var jsonDict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(txt);
-        if (jsonDict == null) throw new InvalidDataException($"Json data malformed: {txt}");
+        var payload = System.Text.Json.JsonSerializer.Deserialize<TextPayload>(txt);
+        if (payload == null) throw new InvalidDataException($"Json data malformed: {txt}");
 
-        if (jsonDict.TryGetValue("Headers", out string? msg_headers))
-        {
-            msg.Headers = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(msg_headers)!;
-        }
-        
-        if (jsonDict.TryGetValue("Data", out string? msg_Data))
-        {
-            msg.Data = Convert.FromBase64String(msg_Data);
-        }
+        if (payload.Headers != null) msg.Headers = payload.Headers;
+        if (payload.Data != null) msg.Data = Convert.FromBase64String(payload.Data);
+        if (payload.QueryId != null) msg.QueryId = Guid.Parse(payload.QueryId);
+        msg.IsQueryResponse = payload.IsQueryResponse;
 
-        if (jsonDict.TryGetValue("QueryId", out string? msg_QueryId)) msg.QueryId = Guid.Parse(msg_QueryId!);
         return msg;
     }
 

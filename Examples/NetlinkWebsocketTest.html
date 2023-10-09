@@ -1,0 +1,71 @@
+<html>
+<body onload="WebSocketTest()">
+
+	<script src="Netlink.js"></script>
+	
+	<script type="text/javascript">
+
+		async function WebSocketTest() {
+			var netlink = new NetlinkWebsocket("ws://localhost:5555", OnConnectionEstablished, OnConnectionClosed, OnCommand, OnQuery, OnError);
+			//await netlink.Connect(); // Connect once (returns)
+			await netlink.AutoConnect(); // Auto-reconnect (never returns)
+		}
+
+		function OnConnectionEstablished(link) {
+			WriteLine("websocket connection established");
+		}
+
+		function OnConnectionClosed(link) {
+			WriteLine("websocket connection closed");
+		}
+
+		async function OnCommand(link, command, headers, data) {
+			WriteLine("Command received: " + command);
+
+			// Test client->server command
+			WriteLine("Client->server command...");
+			link.SendCommand("clientCommand");
+
+			// Test client->server query
+			WriteLine("Client->server query...");
+			let [response, resp_headers, resp_data] = await link.SendQuery("whats_your_name");
+			WriteLine("Response: " + response);
+		}
+
+		function OnQuery(link, query, headers, data) {
+			WriteLine("Query received: " + query);
+			return "OK from web client";
+		}
+
+		function OnError(link, error) {
+			WriteLine(error, true);
+		}
+
+		// Display the text in the browser
+		function WriteLine(msg, isErr = false) {
+			if (isErr) {
+				console.error(msg);
+			}
+			else {
+				console.log(msg);
+			}
+
+			// Add to html list
+			const listnode = document.createElement("li");
+			const spannode = document.createElement("span");
+			const textnode = document.createTextNode(msg);
+			spannode.appendChild(textnode);
+			spannode.style.color = isErr ? "red" : "blue";
+			spannode.style.fontFamily = "monospace";
+			listnode.appendChild(spannode);
+
+			var loglines = document.getElementById("loglines");
+			loglines.appendChild(listnode);
+		};
+
+	</script>
+
+	<ol id="loglines">
+	</ol>
+</body>
+</html>

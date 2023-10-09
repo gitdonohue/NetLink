@@ -131,7 +131,7 @@ Note: Encryption not supported, to be used on localhost or VPN/LAN only.
 
 ### C++ Client Example
 
-See [NetLinkSocketClient.hpp](https://github.com/gitdonohue/NetLink/blob/develop/cpp/NetLinkSocketClient.hpp) / [NetLinkSocketClient.cpp](https://github.com/gitdonohue/NetLink/blob/develop/cpp/NetLinkSocketClient.cpp)
+See [NetLinkSocketClient.hpp](/NetLink/cpp/NetLinkSocketClient.hpp) / [NetLinkSocketClient.cpp](/NetLink/cpp/NetLinkSocketClient.cpp)
 
 Example pending
 

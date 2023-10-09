@@ -34,8 +34,29 @@ A client link can be created via the ```NetLinkSocket```, ```NetLinkNamedPipe```
 INetLink netlinkCLient = new NetLinkSocket(server: "localhost", port: 4445);
 ```
 
-To handle client events, CommandHandler and QueryHandler event handlers can be bound, just like in the server.  OnConnected and OnDisconnected can also be bound for connection events.
-Just like on the server, the ```SendCommand()``` and ```SendQuery()``` methods can be used to send to the server.
+In order to handle events, ```CommandHandler``` and ```QueryHandler``` event handlers can be bound:
+```
+netlinkCLient.CommandHandler = async (INetLink link, NetMessage command, CancellationToken ct) =>
+{
+    Console.WriteLine($"Client Processing command: {command.GetCommand()}");
+    await Task.Delay(100, ct); // some work here...
+};
+
+netlinkCLient.QueryHandler = async (INetLink link, NetMessage query, CancellationToken ct) =>
+{
+    await Task.Delay(100, ct); // some work here...
+    var resp = link.CreateResponse(query, true, "Client OK");
+    return resp;
+};
+```
+
+The ```SendCommand()``` and ```SendQuery()``` methods can be used to send to the server. For example:
+```
+await netlinkCLient.SendCommand(netlinkCLient.CreateCommand("clientToServerCommand"), ct);
+
+var serverResponse = await netlinkCLient.SendQuery(netlinkCLient.CreateQuery("clientToServerQuery").AddHeader("headerName","headerValue"), ct);
+Console.WriteLine($"Server response: {serverResponse.GetResponse()}");
+```
 
 ### Server Examples
 
@@ -84,22 +105,30 @@ Then, all you need to do start handling connection is:
 await netLinkServer.Run(ct); // Listen for incoming connections
 ```
 
-The list of active connections can be iterated through using the ```GetLinks()``` method, for broadcating, for example.
-
 Just like on the clients, the ```SendCommand()``` and ```SendQuery()``` methods can be used to send to a client link.
 
-In order to send commands to clients, links have a ```SendCommand()``` method:
+The list of active connections can be iterated through using the ```GetLinks()``` method, for broadcating.  For example:
 ```
-await clientLink.SendCommand(clientLink.CreateCommand("serverToClientCommand"), ct);
+foreach (var clientLink in netLinkServer.GetLinks())
+{
+    await clientLink.SendCommand(clientLink.CreateCommand("serverToClientCommand"), ct);
+
+    var clientRepsonse = await clientLink.SendQuery(clientLink.CreateQuery("ServerToClientQuery").AddHeader("headerName", "headerValue"), ct);
+    Console.WriteLine($"Client response: {clientRepsonse.GetResponse()}");
+}
 ```
 
-To query clients, the ```SendQuery()``` can be used:
-```
-var clientRepsonse = await clientLink.SendQuery(clientLink.CreateQuery("ServerToClientQuery").AddHeader("headerName", "headerValue"), ct);
-Console.WriteLine($"Client response: {clientRepsonse.GetResponse()}");
-```
+### Web Client Example
+
+see [NetlinkWebsocketTest.html](NetlinkWebsocketTest.html) (uses [Netlink.js](Netlink.js)).
+
+### C++ Client Example
+
+See [NetLinkSocketClient.hpp](NetLinkSocketClient.hpp) / [NetLinkSocketClient.cpp](NetLinkSocketClient.cpp)
+
+Example pending
 
 ## Caveat Emptor
 
-This package is meant to be a time-savor, easy to use, client-server library.  It is not meant as a robust, secure, highly scalable or performant system for a large number of connections.
+This package is meant to be a time-saver, easy to use, client-server library, for IPC or LAN use.  It is not meant as a robust, secure, highly scalable or performant system for a large number of connections.
 It's used in production, but there are currently no unit tests to safeguard from regressions.  If anyone is interested in pursuing the idea of establishing a testing framework for this library, please feel free to contect me.

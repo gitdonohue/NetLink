@@ -91,9 +91,9 @@ netlinkCLient.QueryHandler = async (INetLink link, NetMessage query, Cancellatio
 var messagesExamplesTask = async () =>
 {
     await Task.Delay(2000, ct);
-    Console.WriteLine("Staring messages examples...");
+    Console.WriteLine("Starting messages examples...");
 
-    while (!ct.IsCancellationRequested)
+    while (true)
     {
         // client -> server
         if (netlinkCLient.IsConnected)
@@ -121,7 +121,6 @@ var messagesExamplesTask = async () =>
 
         await Task.Delay(1000, ct);
     }
-    Console.WriteLine("Messages examples cancelled.");
 };
 
 //
@@ -153,5 +152,5 @@ try
 }
 catch (TaskCanceledException)
 {
-    Console.WriteLine("Server loop cancelled");
+    Console.WriteLine("Program Cancelled");
 }

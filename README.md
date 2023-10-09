@@ -86,6 +86,8 @@ await netLinkServer.Run(ct); // Listen for incoming connections
 
 The list of active connections can be iterated through using the ```GetLinks()``` method, for broadcating, for example.
 
+Just like on the clients, the ```SendCommand()``` and ```SendQuery()``` methods can be used to send to a client link.
+
 In order to send commands to clients, links have a ```SendCommand()``` method:
 ```
 await clientLink.SendCommand(clientLink.CreateCommand("serverToClientCommand"), ct);

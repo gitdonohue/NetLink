@@ -123,7 +123,7 @@ foreach (var clientLink in netLinkServer.GetLinks())
 ### Web Client Example
 
 A browser can attach to a local WebSocket endpoint, as show in the following example.
-See [NetlinkWebsocketTest.html](NetlinkWebsocketTest.html) (uses [Netlink.js](Netlink.js)).
+See [NetlinkWebsocketTest.html](https://github.com/gitdonohue/NetLink/blob/develop/Examples/NetlinkWebsocketTest.html) (uses [Netlink.js](https://github.com/gitdonohue/NetLink/blob/develop/Examples/Netlink.js)).
 
 <img width="995" alt="image" src="https://github.com/gitdonohue/NetLink/assets/44268295/4934f6e8-90d2-4584-9429-ea3bcd46db50">
 

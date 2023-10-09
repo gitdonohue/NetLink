@@ -27,14 +27,24 @@ The nuget package can be found at: https://www.nuget.org/packages/NetLink
 
 The following examples can be found in https://github.com/gitdonohue/NetLink/blob/develop/Examples.
 
+### Client Examples
+
+A client link can be created via the ```NetLinkSocket```, ```NetLinkNamedPipe``` or ```NetLinkWebsocket``` classes, to connect to a server. For example:
+```
+INetLink netlinkCLient = new NetLinkSocket(server: "localhost", port: 4445);
+```
+
+To handle client events, CommandHandler and QueryHandler event handlers can be bound, just like in the server.  OnConnected and OnDisconnected can also be bound for connection events.
+Just like on the server, the ```SendCommand()``` and ```SendQuery()``` methods can be used to send to the server.
+
 ### Server Examples
 
-A server accepting socket connections on port 4444 could be defined as such:
+A server endpoint can be created using the ```NetLinkSocketServer```, ```NetLinkWebsocketServer``` or ```NetLinkNamedPipeServer``` classes, for example:
 ```
 var netLinkServer = new NetLinkSocketServer(port: 4444, server: "auto");
 ```
 
-The server could accept connections using several methods by using the NetLinkAggregateServer class, for example:
+The server could accept connections using several methods by using the ```NetLinkAggregateServer``` class, for example:
 ```
 var netLinkServer = new NetLinkAggregateServer(new List<INetLinkServer>()
 {
@@ -46,7 +56,7 @@ var netLinkServer = new NetLinkAggregateServer(new List<INetLinkServer>()
 });
 ```
 
-In order to handle events, the LinkEstablished, LinkTerminated, CommandHandler and QueryHandler event handlers can be bound:
+In order to handle events, the ```LinkEstablished```, ```LinkTerminated```, ```CommandHandler``` and ```QueryHandler``` event handlers can be bound:
 ```
 netLinkServer.LinkEstablished += (link) => Console.WriteLine($"client->server link established: {link}");
 netLinkServer.LinkTerminated += (link) => Console.WriteLine($"client->server link terminated: {link}");
@@ -67,6 +77,24 @@ netLinkServer.QueryHandler = async (INetLink link, NetMessage query, Cancellatio
     var resp = link.CreateResponse(query, true, "Server OK");
     return resp;
 };
+```
+
+Then, all you need to do start handling connection is:
+```
+await netLinkServer.Run(ct); // Listen for incoming connections
+```
+
+The list of active connections can be iterated through using the ```GetLinks()``` method, for broadcating, for example.
+
+In order to send commands to clients, links have a ```SendCommand()``` method:
+```
+await clientLink.SendCommand(clientLink.CreateCommand("serverToClientCommand"), ct);
+```
+
+To query clients, the ```SendQuery()``` can be used:
+```
+var clientRepsonse = await clientLink.SendQuery(clientLink.CreateQuery("ServerToClientQuery").AddHeader("headerName", "headerValue"), ct);
+Console.WriteLine($"Client response: {clientRepsonse.GetResponse()}");
 ```
 
 ## Caveat Emptor

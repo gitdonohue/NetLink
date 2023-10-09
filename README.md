@@ -12,11 +12,13 @@ This can be used for simple IPC, or to manage remote connections.
 ## Features
 
 - Simple integration
-- Connection-based link
+- Connection-based links
 - Commands and Queries
+- Bi-directional, asynchronous
 - Strings, headers and byte array payloads
 - Works over TCP Sockets, WebSockets or Named Pipes
-- Encryption (X509Certificates certificate-based)
+- link-level Compression
+- link-level Encryption and/or Validation (using X509 Certificates)
 - Clients in C#, C++ and Javascript
 
 ## Nuget
@@ -132,6 +134,26 @@ Note: Encryption not supported, to be used on localhost or VPN/LAN only.
 See [NetLinkSocketClient.hpp](NetLinkSocketClient.hpp) / [NetLinkSocketClient.cpp](NetLinkSocketClient.cpp)
 
 Example pending
+
+## Encryption
+
+In order to enable encrytion over the links, you have to install a certificate on the server. 
+The default name for this certificate would be ```NetLinkServer```, but this name cand be changed by setting ```ServerCertificateName``` on the server. 
+The server and client can check the ```IsEncrypted``` property and act accordingly.
+
+If you want to validate the clients, you can also install a certificate on the client(s).
+The default name for this certificate would be ```NetLinkClient```, but this name cand be changed by setting ```ClientCertificateName``` on the server. 
+The server can then check the ```IsVerified``` flag on messages and act accordingly.  Warning: This has not been thoroughly tested.
+
+To create a certificate which includes a private key:
+```
+openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -sha256 -days 900 -nodes
+openssl pkcs12 -inkey key.pem -in cert.pem -export -out installable_cert.pfx
+```
+Or
+https://certificatetools.com/
+
+To disable encryption, you can set the ```AllowEncryption``` property to false on the server.
 
 ## Caveat Emptor
 

@@ -4,10 +4,10 @@ using System.Net;
 
 namespace NetLink;
 
-internal static partial class Utilities
+public static partial class Utilities
 {
     internal static bool Verbose => INetLink.Verbose;
-    [System.Diagnostics.Conditional("DEBUG")] internal static void Trace(string msg) { if (Verbose) Console.WriteLine(msg); System.Diagnostics.Debug.WriteLine(msg); }
+    [System.Diagnostics.Conditional("DEBUG")] public static void Trace(string msg) { if (Verbose) Console.WriteLine(msg); System.Diagnostics.Debug.WriteLine(msg); }
 
     public static async Task<T?> WithCancellationToken<T>(this Task<T> source, CancellationToken cancellationToken)
     {
@@ -21,9 +21,9 @@ internal static partial class Utilities
         return source.Result;
     }
 
-    internal static byte[] ToArray(ArraySegment<byte> s) => new ReadOnlySpan<byte>(s.Array, s.Offset, s.Count).ToArray();
+    public static byte[] ToArray(ArraySegment<byte> s) => new ReadOnlySpan<byte>(s.Array, s.Offset, s.Count).ToArray();
 
-    internal static IEnumerable<ArraySegment<byte>> EnumerateChunks(ArraySegment<byte> data, int chunkSize)
+    public static IEnumerable<ArraySegment<byte>> EnumerateChunks(ArraySegment<byte> data, int chunkSize)
     {
         if (data.Count <= chunkSize) yield return data;
         else
@@ -47,7 +47,7 @@ internal static partial class Utilities
         }
     }
 
-    internal static IPAddress GetServerAddress(string serverName)
+    public static IPAddress GetServerAddress(string serverName)
     {
         if (!IPAddress.TryParse(serverName, out var serverAddr)) // 1st try for server explicitly set as www.xxx.yyy.zzz
         {

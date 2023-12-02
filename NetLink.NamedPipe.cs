@@ -165,7 +165,7 @@ public sealed class NetLinkNamedPipe : NetLinkSharedBase, INetLink
 
             if (packet != null && packet.Length > 0)
             {
-                NetMessage message = NetMessage.DeSerializeBinary(packet, this);    
+                NetMessage message = NetMessage.InternalDeSerializeBinary(packet, this);    
                 _ = Task.Run(async () => await HandleMessageReception(message, ct));
             }
             else
@@ -250,7 +250,7 @@ public sealed class NetLinkNamedPipe : NetLinkSharedBase, INetLink
         return false;
     }
 
-    private byte[] SerializeMessage(NetMessage message) => message.SerializeBinary(this);
+    private byte[] SerializeMessage(NetMessage message) => message.InternalSerializeBinary(this);
 
     protected override async Task<bool> SendMessageImpl(NetMessage message, CancellationToken ct)
     {

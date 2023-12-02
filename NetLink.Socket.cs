@@ -14,9 +14,9 @@ public sealed class NetLinkSocket : NetLinkSharedBase, INetLink
     public bool IsEncrypted => PublicKeyRsa != null;
     public bool IsVerified => false; // TODO
 
-		IReadOnlyDictionary<string, string> INetLink.Properties => Properties;
+	IReadOnlyDictionary<string, string> INetLink.Properties => Properties;
 
-		public event EventHandler? OnConnected;
+	public event EventHandler? OnConnected;
     public event EventHandler? OnDisconnected;
 
     private string ServerName { get; init; } = "localHost";
@@ -151,7 +151,7 @@ public sealed class NetLinkSocket : NetLinkSharedBase, INetLink
 
             if (packet != null && packet.Length > 0)
             {
-                NetMessage message = NetMessage.DeSerializeBinary(packet, this);
+                NetMessage message = NetMessage.InternalDeSerializeBinary(packet, this);
                 _ = Task.Run(async () => await HandleMessageReception(message, ct));
             }
             else
@@ -237,7 +237,7 @@ public sealed class NetLinkSocket : NetLinkSharedBase, INetLink
         return false;
     }
 
-    private byte[] SerializeMessage(NetMessage message) => message.SerializeBinary(this);
+    private byte[] SerializeMessage(NetMessage message) => message.InternalSerializeBinary(this);
 
     protected override async Task<bool> SendMessageImpl(NetMessage message, CancellationToken ct)
     {

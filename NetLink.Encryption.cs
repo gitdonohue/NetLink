@@ -13,7 +13,7 @@ using System.Security.Cryptography.X509Certificates;
 
 namespace NetLink;
 
-internal static partial class Utilities
+public static partial class Utilities
 {
     internal static byte[] EncryptData(ArraySegment<byte> data, RSA encryptionKey)
     {
@@ -95,7 +95,7 @@ internal static partial class Utilities
     }
 
     private static readonly Dictionary<string, X509Certificate2?> CertificateCache = new();
-    internal static X509Certificate2? GetCertificate(string certificateName)
+    public static X509Certificate2? GetCertificate(string certificateName)
     {
         // Retreive from cache
         if (CertificateCache.TryGetValue(certificateName, out X509Certificate2? cert)) { return cert; }

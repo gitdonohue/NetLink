@@ -6,6 +6,8 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
 
+//[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("NetLink.Quic")]
+
 namespace NetLink;
 
 // Internal implementation for NetMessage
@@ -103,7 +105,7 @@ public sealed partial class NetMessage
         return netMessage;
     }
 
-    internal byte[] SerializeBinary(INetLink link)
+    public byte[] InternalSerializeBinary(INetLink link)
     {
         NetLinkSharedBase linkb = (link as NetLinkSharedBase)!;
         RSA ? signingKey = null;
@@ -162,7 +164,7 @@ public sealed partial class NetMessage
         return finalBuffer;
     }
 
-    internal static NetMessage DeSerializeBinary(ArraySegment<byte> data, INetLink link)
+    public static NetMessage InternalDeSerializeBinary(ArraySegment<byte> data, INetLink link)
     {
         if (data.Count < 1) throw new ArgumentException("NetMessage data too short.");
 
@@ -318,7 +320,7 @@ public abstract class NetLinkSharedBase
         EncryptionRequestGuid = null;
     }
 
-    internal async Task InternalOnLinkEstablished(CancellationToken ct)
+    public async Task InternalOnLinkEstablished(CancellationToken ct)
     {
         IsClient = false;
 

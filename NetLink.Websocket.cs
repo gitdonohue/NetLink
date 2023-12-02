@@ -212,7 +212,7 @@ public sealed class NetLinkWebsocket : NetLinkSharedBase, INetLink
         switch (Encoding)
         {
             case EncodingType.Text: return message.SerializeText(this);
-            default: return message.SerializeBinary(this);
+            default: return message.InternalSerializeBinary(this);
         }
     }
 
@@ -222,7 +222,7 @@ public sealed class NetLinkWebsocket : NetLinkSharedBase, INetLink
         {
             return (type == WebSocketMessageType.Text) ?
                 NetMessage.DeSerializeText(data, this)
-                : NetMessage.DeSerializeBinary(data, this);
+                : NetMessage.InternalDeSerializeBinary(data, this);
         }
         catch (Exception ex)
         {

@@ -2,7 +2,9 @@
 
 using System.IO.Pipes;
 using System.Security.AccessControl;
+using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
+
 using static NetLink.Utilities;
 
 //Note: This is windows-only, unless NO_WINDOWS_NAMEDPIPES_ACL is defined.
@@ -22,9 +24,9 @@ public sealed class NetLinkNamedPipe : NetLinkSharedBase, INetLink
     public bool IsEncrypted => PublicKeyRsa != null;
     public bool IsVerified => false; // TODO
 
-		IReadOnlyDictionary<string, string> INetLink.Properties => Properties;
+	IReadOnlyDictionary<string, string> INetLink.Properties => Properties;
 
-		public event EventHandler? OnConnected;
+	public event EventHandler? OnConnected;
     public event EventHandler? OnDisconnected;
 
     private string ServerName { get; init; } = ".";
@@ -32,7 +34,8 @@ public sealed class NetLinkNamedPipe : NetLinkSharedBase, INetLink
 
     private Guid LinkGuid { get; set; }
 
-    public NetLinkNamedPipe(string server, string pipeName)
+    public NetLinkNamedPipe(string server, string pipeName, X509Certificate2? certificate = null)
+        : base(certificate)
     {
         ServerName = server;
         ServerPipeName = pipeName;
@@ -46,7 +49,8 @@ public sealed class NetLinkNamedPipe : NetLinkSharedBase, INetLink
 
     private readonly CancellationTokenSource streamDisconnectedTokenSource = new();
 
-    internal NetLinkNamedPipe(PipeStream inStream, PipeStream outStream, Guid id)
+    internal NetLinkNamedPipe(PipeStream inStream, PipeStream outStream, Guid id, X509Certificate2? certificate)
+        : base(certificate)
     {
         StreamIn = inStream;
         StreamOut = outStream;
@@ -302,6 +306,7 @@ public sealed class NetLinkNamedPipeServer : INetLinkServer
     public NetLinkNamedPipeServer(string pipeName = @"NetLink\NetLink_NP") { PipeName = pipeName; }
     private string PipeName { get; init; }
 
+    public System.Security.Cryptography.X509Certificates.X509Certificate2? Certificate { get; init; } = null;
     public bool AllowEncryption { get; init; } = true;
     public bool AllowOutgoingCompression { get; init; } = true;
 
@@ -380,7 +385,7 @@ public sealed class NetLinkNamedPipeServer : INetLinkServer
                     }
                     Trace("Server received client connection to link pipe.");
 
-                    var link = new NetLinkNamedPipe(linkPipeIncomming, linkPipeOutgoing, link_guid) { AllowCompression = this.AllowOutgoingCompression, AllowEncryption = this.AllowEncryption };
+                    var link = new NetLinkNamedPipe(linkPipeIncomming, linkPipeOutgoing, link_guid, Certificate) { AllowCompression = this.AllowOutgoingCompression, AllowEncryption = this.AllowEncryption };
                     ActiveLinks.Add(link);
 
                     await link.InternalOnLinkEstablished(ct);

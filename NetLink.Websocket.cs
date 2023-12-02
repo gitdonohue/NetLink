@@ -2,6 +2,7 @@
 
 using System.Net;
 using System.Net.WebSockets;
+using System.Security.Cryptography.X509Certificates;
 using static NetLink.Utilities;
 
 namespace NetLink;
@@ -33,7 +34,8 @@ public sealed class NetLinkWebsocket : NetLinkSharedBase, INetLink
 
 	IReadOnlyDictionary<string, string> INetLink.Properties => Properties;
 
-	internal NetLinkWebsocket(WebSocket ws, Guid id, EncodingType encoding)
+	internal NetLinkWebsocket(WebSocket ws, Guid id, EncodingType encoding, X509Certificate2? certificate)
+        : base(certificate)
     {
         websocket = ws;
         LinkGuid = id;
@@ -42,7 +44,8 @@ public sealed class NetLinkWebsocket : NetLinkSharedBase, INetLink
         _ = Task.Run(() => OnConnected?.Invoke(this, EventArgs.Empty));
     }
 
-    public NetLinkWebsocket(string server, int port, EncodingType encoding)
+    public NetLinkWebsocket(string server, int port, EncodingType encoding, X509Certificate2? certificate = null)
+        : base(certificate)
     {
         ServerName = server;
         ServerPort = port;
@@ -84,9 +87,9 @@ public sealed class NetLinkWebsocket : NetLinkSharedBase, INetLink
                 {
                     throw new Exception($"Error connecting to websocket: {e.Message}");
                 }
-                catch (TaskCanceledException e)
+                catch (TaskCanceledException)
                 {
-                    if (ct.IsCancellationRequested) throw e;
+                    if (ct.IsCancellationRequested) throw;
                     clientWebSocket.Abort();
                     clientWebSocket = new();
                     websocket = clientWebSocket;
@@ -279,6 +282,7 @@ public sealed class NetLinkWebsocketServer : INetLinkServer
         ServerName = server;
     }
 
+    public System.Security.Cryptography.X509Certificates.X509Certificate2? Certificate { get; init; } = null;
     public bool AllowEncryption { get; init; } = true;
     public bool AllowOutgoingCompression { get; init; } = true;
 
@@ -355,7 +359,7 @@ public sealed class NetLinkWebsocketServer : INetLinkServer
                     }
 
                     WebSocket webSocket = webSocketContext.WebSocket;
-                    var link = new NetLinkWebsocket(webSocket, socketGuid, encoding) { AllowCompression = this.AllowOutgoingCompression, AllowEncryption = this.AllowEncryption };
+                    var link = new NetLinkWebsocket(webSocket, socketGuid, encoding, Certificate) { AllowCompression = this.AllowOutgoingCompression, AllowEncryption = this.AllowEncryption };
                     ActiveLinks.Add(link);
 
                     // Send the link guid to the connecting client

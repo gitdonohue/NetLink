@@ -2,6 +2,7 @@
 
 using System.Net;
 using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
 using static NetLink.Utilities;
 
 namespace NetLink;
@@ -27,7 +28,8 @@ public sealed class NetLinkSocket : NetLinkSharedBase, INetLink
 
     private Guid LinkGuid { get; set; }
 
-    public NetLinkSocket(string server, int port)
+    public NetLinkSocket(string server, int port, X509Certificate2? certificate = null)
+        : base(certificate)
     {
         ServerName = server;
         ServerPort = port;
@@ -38,7 +40,8 @@ public sealed class NetLinkSocket : NetLinkSharedBase, INetLink
 
     private readonly CancellationTokenSource streamDisconnectedTokenSource = new();
 
-    internal NetLinkSocket(NetworkStream stream, Guid id)
+    internal NetLinkSocket(NetworkStream stream, Guid id, X509Certificate2? certificate)
+        : base(certificate)
     {
         NetworkStream = stream;
         LinkGuid = id;
@@ -82,9 +85,9 @@ public sealed class NetLinkSocket : NetLinkSharedBase, INetLink
                     await clientSocket.ConnectAsync(endPoint, linkedCts.Token);
                     break;
                 }
-                catch (TaskCanceledException e)
+                catch (TaskCanceledException)
                 {
-                    if (ct.IsCancellationRequested) throw e;
+                    if (ct.IsCancellationRequested) throw;
                 }
                 catch (OperationCanceledException)
                 {
@@ -296,6 +299,7 @@ public sealed class NetLinkSocketServer : INetLinkServer
     private int Port { get; init; }
     private IPEndPoint? Endpoint { get; init; }
 
+    public System.Security.Cryptography.X509Certificates.X509Certificate2? Certificate { get; init; } = null;
     public bool AllowEncryption { get; init; } = true;
     public bool AllowOutgoingCompression { get; init; } = true;
 
@@ -350,7 +354,7 @@ public sealed class NetLinkSocketServer : INetLinkServer
             {
                 try
                 {
-					NetLinkSocket link = new NetLinkSocket(clientStream, link_guid) { AllowCompression = this.AllowOutgoingCompression, AllowEncryption = this.AllowEncryption };
+					NetLinkSocket link = new NetLinkSocket(clientStream, link_guid, Certificate) { AllowCompression = this.AllowOutgoingCompression, AllowEncryption = this.AllowEncryption };
                     string remote = client.Client.RemoteEndPoint?.ToString() ?? string.Empty;
                     link.SetProperty("remote", remote);
 						ActiveLinks.Add(link);

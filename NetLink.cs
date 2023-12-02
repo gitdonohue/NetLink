@@ -35,7 +35,12 @@ public interface INetLink : IDisposable
     bool IsConnected { get; }
     IReadOnlyDictionary<string, string> Properties { get; }
     public string TransportName { get; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
     public bool TransportHandlesEncryption { get; }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public System.Security.Cryptography.X509Certificates.X509Certificate2? Certificate { get; }
 
     event EventHandler? OnConnected;
     event EventHandler? OnDisconnected;
@@ -58,6 +63,7 @@ public interface INetLinkServer : IDisposable
 {
     bool AllowEncryption { init; }
     bool AllowOutgoingCompression { init; }
+    System.Security.Cryptography.X509Certificates.X509Certificate2? Certificate { init; }
 
     event Action<INetLink>? LinkEstablished;
     event Action<INetLink>? LinkTerminated;
@@ -69,8 +75,9 @@ public interface INetLinkServer : IDisposable
 
     Task Run(CancellationToken ct);
 
-    public static string ServerCertificateName { get; set; } = "NetLinkServer";
-    public static string ClientCertificateName { get; set; } = "NetLinkClient";
+    public static string DefaultServerCertificateName { get; set; } = "NetLinkServer";
+    public static string DefaultClientCertificateName { get; set; } = "NetLinkClient";
+
 }
 
 public sealed partial class NetMessage

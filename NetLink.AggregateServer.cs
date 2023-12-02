@@ -4,6 +4,7 @@ namespace NetLink;
 
 public sealed class NetLinkAggregateServer : INetLinkServer
 {
+    public System.Security.Cryptography.X509Certificates.X509Certificate2? Certificate { get;  init; } = null;
     public bool AllowEncryption { get; init; } = true;
     public bool AllowOutgoingCompression { get; init; } = true;
 
@@ -27,7 +28,7 @@ public sealed class NetLinkAggregateServer : INetLinkServer
         }
     }
 
-    private HashSet<INetLinkServer> Servers = new();
+    private readonly HashSet<INetLinkServer> Servers = new();
     public NetLinkAggregateServer(IEnumerable<INetLinkServer> linkServers)
     {
         foreach(var server in linkServers)

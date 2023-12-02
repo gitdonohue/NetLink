@@ -275,7 +275,12 @@ public sealed partial class NetMessage
 
 public abstract class NetLinkSharedBase
 {
-	protected Dictionary<string, string> Properties = new();
+    public NetLinkSharedBase(X509Certificate2? cert)
+    {
+        Certificate = cert;
+    }
+
+    protected Dictionary<string, string> Properties = new();
     public void SetProperty(string key, string val) { Properties[key] = val; }
 
 		public Func<INetLink, NetMessage, CancellationToken, Task>? CommandHandler { private get; set; }
@@ -284,6 +289,7 @@ public abstract class NetLinkSharedBase
     protected ConcurrentDictionary<Guid, SemaphoreSlim> PendingRequests = new();
     protected ConcurrentDictionary<Guid, NetMessage> PendingResponses = new();
 
+    public X509Certificate2? Certificate { get; init; }
     internal bool AllowEncryption { get; init; } = true;
     internal bool AllowCompression { get; init; } = true;
 
@@ -335,7 +341,7 @@ public abstract class NetLinkSharedBase
             // Note: We are assuming that only the server initiates Encryption requests
             try
             {
-                var serverCertificate = Utilities.GetCertificate(INetLinkServer.ServerCertificateName);
+                var serverCertificate = Certificate ?? Utilities.GetCertificate(INetLinkServer.DefaultServerCertificateName);
                 if (Utilities.Verbose)
                 {
                     if (serverCertificate != null) { Trace($"Server sending certificate: {serverCertificate.Issuer}"); }
@@ -348,7 +354,7 @@ public abstract class NetLinkSharedBase
             }
             catch (Exception e)
             {
-                Trace($"Could not get certificate named {INetLinkServer.ServerCertificateName}: {e.Message}");
+                Trace($"Could not get certificate named {INetLinkServer.DefaultServerCertificateName}: {e.Message}");
             }
         }
     }
@@ -425,7 +431,7 @@ public abstract class NetLinkSharedBase
                 byte[] aesKey = Utilities.GenerateAesKey();
 
                 // Note: We are assuming that only the client responds Encryption requests
-                var clientCertificate = Utilities.GetCertificate(INetLinkServer.ClientCertificateName);
+                var clientCertificate = msg.Link.Certificate ?? Utilities.GetCertificate(INetLinkServer.DefaultClientCertificateName);
                 if (Utilities.Verbose)
                 {
                     if (clientCertificate != null) { Trace($"Client sending certificate: {clientCertificate.Issuer}"); }

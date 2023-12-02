@@ -14,6 +14,7 @@ namespace NetLink;
 // - Sockets
 // - Windows Named Pipes
 // - Websockets (binary and text)
+// - Quic (NetLink.Quic package)
 //
 //
 // To create a certificate which includes a private key:
@@ -33,6 +34,8 @@ public interface INetLink : IDisposable
     Guid Id { get; }
     bool IsConnected { get; }
     IReadOnlyDictionary<string, string> Properties { get; }
+    public string TransportName { get; }
+    public bool TransportHandlesEncryption { get; }
 
     event EventHandler? OnConnected;
     event EventHandler? OnDisconnected;
@@ -44,6 +47,7 @@ public interface INetLink : IDisposable
     Task<NetMessage> SendQuery(NetMessage query, CancellationToken ct);
 
     public static bool Verbose { get; set; }
+
 
     public NetMessage CreateCommand(string command = "") => new(this, "command", command);
     public NetMessage CreateQuery(string query = "") => new(this, "query", query) { QueryId = Guid.NewGuid() };

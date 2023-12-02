@@ -13,6 +13,9 @@ namespace NetLink;
 
 public sealed class NetLinkNamedPipe : NetLinkSharedBase, INetLink
 {
+    public string TransportName => "NamedPipe";
+    public bool TransportHandlesEncryption => false;
+
     public Guid Id => LinkGuid;
 
     public bool IsConnected => StreamIn?.IsConnected ?? false;

@@ -249,7 +249,7 @@ public sealed partial class NetMessage
             {
                 var msg = DeSerializeBinaryBase(baseMessageData, link);
 
-                msg.IsEncrypted = flags.HasFlag(MessageFlags.EncryptedRsa) || flags.HasFlag(MessageFlags.EncryptedAes);
+                msg.IsEncrypted = flags.HasFlag(MessageFlags.EncryptedRsa) || flags.HasFlag(MessageFlags.EncryptedAes) || link.TransportHandlesEncryption;
                 msg.IsVerified = verified;
                 return msg;
             }
@@ -275,7 +275,7 @@ public sealed partial class NetMessage
 
 public abstract class NetLinkSharedBase
 {
-		protected Dictionary<string, string> Properties = new();
+	protected Dictionary<string, string> Properties = new();
     public void SetProperty(string key, string val) { Properties[key] = val; }
 
 		public Func<INetLink, NetMessage, CancellationToken, Task>? CommandHandler { private get; set; }
@@ -324,7 +324,13 @@ public abstract class NetLinkSharedBase
     {
         IsClient = false;
 
-        if (AllowEncryption && !IsClient)
+        bool transportHandlesEncryption = false;
+        if (this is INetLink netlink)
+        {
+            transportHandlesEncryption = netlink.TransportHandlesEncryption;
+        }
+
+        if (AllowEncryption && !transportHandlesEncryption && !IsClient)
         {
             // Note: We are assuming that only the server initiates Encryption requests
             try

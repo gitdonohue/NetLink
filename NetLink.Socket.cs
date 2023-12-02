@@ -8,6 +8,9 @@ namespace NetLink;
 
 public sealed class NetLinkSocket : NetLinkSharedBase, INetLink
 {
+    public string TransportName => "Socket";
+    public bool TransportHandlesEncryption => false;
+
     public Guid Id => LinkGuid;
 
     public bool IsConnected => NetworkStream?.Socket.Connected ?? false;

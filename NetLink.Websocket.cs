@@ -8,6 +8,9 @@ namespace NetLink;
 
 public sealed class NetLinkWebsocket : NetLinkSharedBase, INetLink
 {
+    public string TransportName => "WebSocket";
+    public bool TransportHandlesEncryption => false;
+
     public Guid Id => LinkGuid;
 
     public bool IsConnected => websocket?.State == WebSocketState.Open;

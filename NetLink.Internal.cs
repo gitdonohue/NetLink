@@ -1,5 +1,6 @@
 ﻿// SPDX-License-Identifier: MIT
 
+using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -278,8 +279,8 @@ public abstract class NetLinkSharedBase
 		public Func<INetLink, NetMessage, CancellationToken, Task>? CommandHandler { private get; set; }
     public Func<INetLink, NetMessage, CancellationToken, Task<NetMessage>>? QueryHandler { private get; set; }
 
-    protected Dictionary<Guid, SemaphoreSlim> PendingRequests = new();
-    protected Dictionary<Guid, NetMessage> PendingResponses = new();
+    protected ConcurrentDictionary<Guid, SemaphoreSlim> PendingRequests = new();
+    protected ConcurrentDictionary<Guid, NetMessage> PendingResponses = new();
 
     internal bool AllowEncryption { get; init; } = true;
     internal bool AllowCompression { get; init; } = true;
@@ -306,12 +307,9 @@ public abstract class NetLinkSharedBase
 
     internal void ResetAtConnection()
     {
-        PendingResponses?.Clear();
-        if (PendingRequests != null)
-        {
-            foreach (var r in PendingRequests.Values) { r.Release(); }
-            PendingRequests?.Clear();
-        }
+        PendingResponses.Clear();
+        foreach (var r in PendingRequests.Values) { r.Release(); }
+        PendingRequests.Clear();
 
         PrivateKeyRsa = null;
         PublicKeyRsa = null;
@@ -449,15 +447,14 @@ public abstract class NetLinkSharedBase
 
                 SemaphoreSlim? semaphore;
                 int maxTries = 100;
-                while (!PendingRequests.TryGetValue(msg.QueryId, out semaphore))
+                while (!PendingRequests.Remove(msg.QueryId, out semaphore))
                 {
                     if (maxTries-- <= 0) throw new InvalidOperationException($"{Role} Pending request not found.");
                     await Task.Delay(1);
                 }
 
-                PendingResponses.Add(msg.QueryId, msg);
+                PendingResponses.TryAdd(msg.QueryId, msg);
                 semaphore.Release();
-                PendingRequests.Remove(msg.QueryId);
             }
             else
             {
@@ -504,11 +501,12 @@ public abstract class NetLinkSharedBase
         Trace($"{Role} Query sent, waiting for response: {query}");
 
         SemaphoreSlim requestSemaphore = new(0);
-        PendingRequests.Add(query.QueryId, requestSemaphore);
-        await requestSemaphore.WaitAsync(ct);
-        if (PendingResponses.TryGetValue(query.QueryId, out var resp))
+        if (PendingRequests.TryAdd(query.QueryId, requestSemaphore))
         {
-            PendingResponses.Remove(query.QueryId);
+            await requestSemaphore.WaitAsync(ct);
+        }
+        if (PendingResponses.Remove(query.QueryId, out var resp))
+        {
             return resp;
         }
         else

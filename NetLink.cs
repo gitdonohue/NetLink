@@ -90,7 +90,8 @@ public sealed partial class NetMessage
     
     public bool IsQueryResponse { get; internal set; } = false;
     public bool IsEncrypted { get; internal set; }
-    public bool IsVerified { get; internal set; }
+    public bool IsCompressed { get; internal set; }
+    [System.Text.Json.Serialization.JsonIgnore] public bool IsVerified { get; internal set; } // TODO
     
     public INetLink Link { get; init; }
 

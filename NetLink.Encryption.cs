@@ -119,7 +119,7 @@ public static partial class Utilities
             }
             catch (Exception)
             {
-                throw new ArgumentException($"The certificate does not contain a valid private key.");
+                throw new ArgumentException($"The certificate does not contain a valid private key (or not running with sufficient priviledges).");
             }
         }
 

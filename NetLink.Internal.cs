@@ -121,6 +121,12 @@ public sealed partial class NetMessage
         if (encryptorAes != null) flags |= MessageFlags.EncryptedAes;
         else if (encryptionKey != null) flags |= MessageFlags.EncryptedRsa;
 
+        // Don't compress below a minimal size
+        if (baseMessageData.Length < 128)
+        {
+            flags &= ~MessageFlags.Compressed;
+        }
+
         // Compression
         byte[] preCompressedData = baseMessageData;
         byte[] postCompressedData = preCompressedData;
@@ -250,6 +256,7 @@ public sealed partial class NetMessage
                 var msg = DeSerializeBinaryBase(baseMessageData, link);
 
                 msg.IsEncrypted = flags.HasFlag(MessageFlags.EncryptedRsa) || flags.HasFlag(MessageFlags.EncryptedAes) || link.TransportHandlesEncryption;
+                msg.IsCompressed = flags.HasFlag(MessageFlags.Compressed);
                 msg.IsVerified = verified;
                 return msg;
             }

@@ -6,8 +6,6 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.RegularExpressions;
 
-//[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("NetLink.Quic")]
-
 namespace NetLink;
 
 // Internal implementation for NetMessage
@@ -37,8 +35,8 @@ public sealed partial class NetMessage
 
         var dict = new Dictionary<string, string>();
         dict.Add("Headers", System.Text.Json.JsonSerializer.Serialize(this.Headers));
-        if (Data.Length > 0) dict.Add("Data", Convert.ToBase64String(Data));
-        if (QueryId != Guid.Empty) dict.Add("QueryId", QueryId.ToString());
+        if (Data.Length > 0) dict.TryAdd("Data", Convert.ToBase64String(Data));
+        if (QueryId != Guid.Empty) dict.TryAdd("QueryId", QueryId.ToString());
         return System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(dict));
     }
 

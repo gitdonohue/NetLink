@@ -19,7 +19,7 @@ This can be used for simple IPC, or to manage remote connections.
 - Works over TCP Sockets, WebSockets or Named Pipes
 - link-level Compression
 - link-level Encryption and/or Validation (using X509 Certificates)
-- Clients in C#, C++ and Javascript
+- Clients in C#, C++, Python and Javascript
 
 ## Nuget
 

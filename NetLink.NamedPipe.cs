@@ -273,31 +273,39 @@ public sealed class NetLinkNamedPipe : NetLinkSharedBase, INetLink
     public async Task<NetMessage> SendQuery(NetMessage query, CancellationToken ct)
     {
         Trace($"{Role} Sending query: {query}");
-        //using (await SemaphoreLock.AcquireLockAsync(QuerySemaphore, ct))
+        if (IsConnected)
         {
-            if (IsConnected)
+            using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(streamDisconnectedTokenSource.Token, ct);
+            using SemaphoreSlim requestSemaphore = new(0);
+            // Register the semaphore BEFORE sending the query
+            if (!PendingRequests.TryAdd(query.QueryId, requestSemaphore))
             {
-                using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(streamDisconnectedTokenSource.Token, ct);
-                try
-                {
-                    if (!await SendInternal(SerializeMessage(query), linkedCts.Token))
-                    {
-                        return INetLink.CreateResponse(query, false, "Request failed");
-                    }
-                    return await WaitResponse(query, linkedCts.Token);
-                }
-                catch (OperationCanceledException)
-                {
-                    return INetLink.CreateResponse(query, false, "Cancelled");
-                }
-                catch (InvalidOperationException e)
-                {
-                    Trace($"{Role} InvalidOperationException: {e.Message}");
-                    return INetLink.CreateResponse(query, false, "Invalid link state");
-                }
+                return INetLink.CreateResponse(query, false, "Duplicate QueryId");
             }
-            return INetLink.CreateResponse(query, false, "Not connected");
+            try
+            {
+                if (!await SendInternal(SerializeMessage(query), linkedCts.Token))
+                {
+                    PendingRequests.TryRemove(query.QueryId, out _); // Clean up
+                    return INetLink.CreateResponse(query, false, "Request failed");
+                }
+                Trace($"{Role} Query sent, waiting for response: {query}");
+                await requestSemaphore.WaitAsync(linkedCts.Token);
+                return WaitResponse(query, linkedCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                PendingRequests.TryRemove(query.QueryId, out _); // Clean up
+                return INetLink.CreateResponse(query, false, "Cancelled");
+            }
+            catch (InvalidOperationException e)
+            {
+                PendingRequests.TryRemove(query.QueryId, out _); // Clean up
+                Trace($"{Role} InvalidOperationException: {e.Message}");
+                return INetLink.CreateResponse(query, false, "Invalid link state");
+            }
         }
+        return INetLink.CreateResponse(query, false, "Not connected");
     }
 }
 

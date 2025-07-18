@@ -515,15 +515,8 @@ public abstract class NetLinkSharedBase
 
     }
 
-    protected async Task<NetMessage> WaitResponse(NetMessage query, CancellationToken ct)
+    protected NetMessage WaitResponse(NetMessage query, CancellationToken ct)
     {
-        Trace($"{Role} Query sent, waiting for response: {query}");
-
-        SemaphoreSlim requestSemaphore = new(0);
-        if (PendingRequests.TryAdd(query.QueryId, requestSemaphore))
-        {
-            await requestSemaphore.WaitAsync(ct);
-        }
         if (PendingResponses.Remove(query.QueryId, out var resp))
         {
             return resp;
